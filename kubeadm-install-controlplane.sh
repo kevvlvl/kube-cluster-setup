@@ -13,6 +13,30 @@ WORKER_NAME="kube-worker1"
 
 ETH_HOST_ADAPTER="enp0s8"
 
+POD_NETWORK_CIDR="10.244.0.0/16"
+
+# Install OpenSSH to navigate between the VMs
+{
+    sudo apt-get update && sudo apt install -y \
+        openssh-server \
+        openssh-client
+
+    systemctl status ssh.service
+
+    sudo ufw allow ssh
+    sudo ufw enable
+    sudo ufw status
+}
+
+# Open k8s control plane required ports: https://kubernetes.io/docs/reference/networking/ports-and-protocols/
+{
+    sudo ufw allow 6443/tcp
+    sudo ufw allow 2379:2380/tcp
+    sudo ufw allow 10250/tcp
+    sudo ufw allow 10259/tcp
+    sudo ufw allow 10257/tcp
+}
+
 # Set hostname to kube-controlplane
 sudo hostnamectl set-hostname ${CONTROL_PLANE_NAME}
 echo "New Hostname set"
@@ -39,25 +63,104 @@ sudo swapoff -a
 # Remove the swap permanently
 sudo sed -e '/swap/ s/^#*/#/' -i $FSTAB_FILE
 
+## IPv4 Forwarding iptables rules (from kubernetes.io doc: https://kubernetes.io/docs/setup/production-environment/container-runtimes/#forwarding-ipv4-and-letting-iptables-see-bridged-traffic)
+
+{
+    cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+    overlay
+    br_netfilter
+EOF
+
+    sudo modprobe overlay
+    sudo modprobe br_netfilter
+
+    # sysctl params required by setup, params persist across reboots
+    cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+    net.bridge.bridge-nf-call-iptables  = 1
+    net.bridge.bridge-nf-call-ip6tables = 1
+    net.ipv4.ip_forward                 = 1
+EOF
+
+    # Apply sysctl params without reboot
+    sudo sysctl --system
+
+    lsmod | grep br_netfilter
+    lsmod | grep overlay
+
+    sysctl net.bridge.bridge-nf-call-iptables net.bridge.bridge-nf-call-ip6tables net.ipv4.ip_forward
+}
+
 # Install containerd (from the Docker documentation: https://docs.docker.com/engine/install/ubuntu/)
 
-sudo apt-get update && sudo apt-get install -y \
-    ca-certificates \
-    curl gnupg
+{
+    sudo apt-get update && sudo apt-get install -y \
+        ca-certificates \
+        curl gnupg
 
-sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-sudo chmod a+r /etc/apt/keyrings/docker.gpg
+    sudo install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    sudo chmod a+r /etc/apt/keyrings/docker.gpg
 
-echo \
-  "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    echo \
+    "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+    "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+    sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-sudo apt-get update && sudo apt-get install -y containerd.io
+    sudo apt-get update && sudo apt-get install -y containerd.io
+
+    sudo systemctl stop containerd.service
+
+    containerd config default | sudo tee -a /etc/containerd/config.toml
+    sudo cat /etc/containerd/config.toml
+    
+    echo "Search for the line 'plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options' in the containerd config.toml and set the following SystemdCgroup to true"
+    read pause
+    # TODO: Far from perfect, but using read to halt script so that user can perform manual action. Figure out sed line to search and modify subsequent matching line...
+
+    sudo systemctl start containerd.service
+}
 
 # Install kubeadm
 
+{
+    sudo apt-get update && sudo apt-get install -y \
+        apt-transport-https \
+        ca-certificates \
+        curl
+
+    curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-archive-keyring.gpg
+
+    echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+    sudo apt-get update && sudo apt-get install -y \
+        kubelet \
+        kubeadm \
+        kubectl
+    sudo apt-mark hold kubelet kubeadm kubectl
+}
+
+# Init the control plane
+
+sudo kubeadm init \
+    --apiserver-advertise-address=${CONTROL_PLANE_IP} \
+    --pod-network-cidr=${POD_NETWORK_CIDR}
+
+echo "Capture Token in the log output"
+read token
+
+# TODO: Far from perfect, but using read to halt script so that user can perform manual action.
+
+# kubeadm join 192.168.56.5:6443 --token pw197i.mlw8wpbr2xsbqkwq \
+# 	--discovery-token-ca-cert-hash sha256:74102cad9feaaf62a9c5ccc53a94bc5d1750659f839c511e8641886f14db8f88
+
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+# Transfer the admin kube config to the worker node
+sudo scp /etc/kubernetes/admin.conf kube@${WORKER_IP}:/home/kube/.kube/config
+
 # Install CNI flannel
 
-# Print keys for worker nodes to join
+kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel
+kubectl get po --all-namespaces
