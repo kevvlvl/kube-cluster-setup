@@ -160,7 +160,43 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 # Transfer the admin kube config to the worker node
 sudo scp /etc/kubernetes/admin.conf kube@${WORKER_IP}:/home/kube/.kube/config
 
-# Install CNI flannel
+# Install CNI Calico - supports network policies and ingress
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/tigera-operator.yaml
 
-kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel
+# Source of the CRD: https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/custom-resources.yaml
+# Modify the IP CIDR to match the defined one at the top of the script.
+cat <<EOT >> calico-crd.yaml
+# This section includes base Calico installation configuration.
+# For more information, see: https://projectcalico.docs.tigera.io/master/reference/installation/api#operator.tigera.io/v1.Installation
+apiVersion: operator.tigera.io/v1
+kind: Installation
+metadata:
+  name: default
+spec:
+  # Configures Calico networking.
+  calicoNetwork:
+    # Note: The ipPools section cannot be modified post-install.
+    ipPools:
+    - blockSize: 26
+      cidr: $POD_NETWORK_CIDR
+      encapsulation: VXLANCrossSubnet
+      natOutgoing: Enabled
+      nodeSelector: all()
+
+---
+
+# This section configures the Calico API server.
+# For more information, see: https://projectcalico.docs.tigera.io/master/reference/installation/api#operator.tigera.io/v1.APIServer
+apiVersion: operator.tigera.io/v1
+kind: APIServer
+metadata:
+  name: default
+spec: {}
+EOT
+
+kubectl create -f calico-crd.yaml
+
+# Flannel - does not support network policies or ingress
+#kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+
 kubectl get po --all-namespaces
