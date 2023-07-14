@@ -33,6 +33,16 @@ ETH_HOST_ADAPTER="enp0s8"
     sudo ufw status
 }
 
+# Open Calico required ports: https://docs.tigera.io/calico/latest/getting-started/kubernetes/requirements
+{
+    sudo ufw allow 179/tcp
+    sudo ufw allow 4789/tcp
+    sudo ufw allow 4789/udp
+    sudo ufw allow 5473/tcp
+    sudo ufw allow 51820/udp
+    sudo ufw allow 51821/udp
+}
+
 # Set hostname to kube-worker1
 sudo hostnamectl set-hostname ${WORKER_NAME}
 echo "New Hostname set"

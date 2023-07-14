@@ -37,6 +37,16 @@ POD_NETWORK_CIDR="10.244.0.0/16"
     sudo ufw allow 10257/tcp
 }
 
+# Open Calico required ports: https://docs.tigera.io/calico/latest/getting-started/kubernetes/requirements
+{
+    sudo ufw allow 179/tcp
+    sudo ufw allow 4789/tcp
+    sudo ufw allow 4789/udp
+    sudo ufw allow 5473/tcp
+    sudo ufw allow 51820/udp
+    sudo ufw allow 51821/udp
+}
+
 # Set hostname to kube-controlplane
 sudo hostnamectl set-hostname ${CONTROL_PLANE_NAME}
 echo "New Hostname set"
