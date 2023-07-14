@@ -9,5 +9,5 @@ if [ "$1" == "w" ]; then
 elif [ "$1" == "c" ]; then
    ssh $USER@$CONTROL_PLANE
 else
-   echo "Expected one argument. c for control plane or w for worker node. Example: ./connect_k8s_vm.sh w to connect to the worker node"
+   echo "Expected one argument. c for control plane or w for worker node. Example: ./connect-vm.sh w to connect to the worker node"
 fi
