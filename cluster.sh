@@ -18,5 +18,8 @@ elif [ "$1" == "info" ]; then
     echo "List of running VMs:"
     VBoxManage list runningvms
 else
-    echo "Expected one argument. up to start the VMs. halt to stop the VMs (ACPI Power button) or info for VM status. Example: ./vbox-cluster.sh up to start the VMs"
+    echo "Expected one argument:"
+    echo "cluster.sh up     Start the Virtualbox VMs"
+    echo "cluster.sh halt   Stop te Virtualbox VMs using ACPI Powerbutton Shutdown"
+    echo "cluster.sh info   Status of Virtualbox VMs"
 fi
