@@ -1,7 +1,6 @@
 #!/usr/bin/bash
 
-USER="kube"
-WORKER_NODE=192.168.56.6
+source kubeadm-vars.sh
 
-echo "About to connect to the worker node at ${WORKER_NODE}"
-ssh $USER@$WORKER_NODE
+echo "About to connect to the worker node at ${WORKER_IP}"
+ssh $USER@$WORKER_IP

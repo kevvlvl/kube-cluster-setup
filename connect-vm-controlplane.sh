@@ -1,7 +1,6 @@
 #!/usr/bin/bash
 
-USER="kube"
-CONTROLPLANE_NODE=192.168.56.5
+source kubeadm-vars.sh
 
-echo "About to connect to the control plane node at ${CONTROLPLANE_NODE}"
-ssh $USER@$CONTROLPLANE_NODE
+echo "About to connect to the control plane node at ${CONTROL_PLANE_IP}"
+ssh $USER@$CONTROL_PLANE_IP

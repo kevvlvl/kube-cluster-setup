@@ -1,16 +1,15 @@
 #!/usr/bin/bash
 
-VM_CONTROL_PLANE="kube-controlplane"
-VM_WORKER_NODE="kube-worker1"
+source kubeadm-vars.sh
 
 if [ "$1" == "up" ]; then
     echo "Starting the two nodes in headless mode..."
-    VBoxManage startvm $VM_CONTROL_PLANE --type headless
-    VBoxManage startvm $VM_WORKER_NODE --type headless
+    VBoxManage startvm $CONTROL_PLANE_NAME --type headless
+    VBoxManage startvm $WORKER_NAME --type headless
 elif [ "$1" == "halt" ]; then
     echo "Shutting down the two nodes (acpi power button)"
-    VBoxManage controlvm $VM_CONTROL_PLANE acpipowerbutton
-    VBoxManage controlvm $VM_WORKER_NODE acpipowerbutton
+    VBoxManage controlvm $CONTROL_PLANE_NAME acpipowerbutton
+    VBoxManage controlvm $WORKER_NAME acpipowerbutton
 elif [ "$1" == "info" ]; then
     echo "List of VMs:"
     VBoxManage list vms

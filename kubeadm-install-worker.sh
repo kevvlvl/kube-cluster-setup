@@ -1,17 +1,6 @@
 #!/usr/bin/bash
 
-HOSTNAME_FILE=/etc/hostname
-HOSTS_FILE=/etc/hosts
-FSTAB_FILE=/etc/fstab
-
-GATEWAY_IP="192.168.56.1"
-
-CONTROL_PLANE_IP="192.168.56.5"
-CONTROL_PLANE_NAME="kube-controlplane"
-WORKER_IP="192.168.56.6"
-WORKER_NAME="kube-worker1"
-
-ETH_HOST_ADAPTER="enp0s8"
+source kubeadm-vars.sh
 
 # Install OpenSSH to navigate between the VMs
 {
