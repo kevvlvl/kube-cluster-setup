@@ -8,7 +8,7 @@ https://argo-cd.readthedocs.io/en/stable/getting_started/
 
 2. Apply the ArgoCD CRDs
 
-```bash
+```shell
 kubectl create namespace argocd
 kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 ..
@@ -71,7 +71,7 @@ networkpolicy.networking.k8s.io/argocd-server-network-policy created
 
 3. Verify that everything deployed in the namespace `argocd` is healthy
 
-```bash
+```shell
 NAME                                                    READY   STATUS    RESTARTS   AGE
 pod/argocd-application-controller-0                     1/1     Running   0          93s
 pod/argocd-applicationset-controller-568754c579-pmfw6   1/1     Running   0          93s
@@ -115,7 +115,7 @@ If need be, use the `--insecure` flag for every argocd cli operation. In reality
 
 4. Install the ArgoCD CLI
 
-```bash
+```shell
 curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
 sudo install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
 rm argocd-linux-amd64
@@ -125,14 +125,14 @@ rm argocd-linux-amd64
 
 replace PASSWORD_HERE with the desired password
 
-```bash
+```shell
 kubectl -n argocd patch secret argocd-secret \
 -p '{"stringData": {"admin.password": "'$(htpasswd -bnBC 10 "" PASSWORD_HERE | tr -d ':\n' | sed 's/$2y/$2a/')'", "admin.passwordMtime": "'$(date +%FT%T%Z)'"}}'
 ```
 
 While connected on any node, now we can access argoCD UI by getting the service's ClusterIP:
 
-```bash
+```shell
 k -n argocd get svc argocd-server
 NAME            TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
 argocd-server   ClusterIP   10.109.222.11   <none>        80/TCP,443/TCP   15h
@@ -175,7 +175,7 @@ gitea:
     email: "foo@bar.gitea"
 ```
 
-```bash
+```shell
 helm repo add gitea-charts https://dl.gitea.com/charts/
 helm repo update
 helm install gitea gitea-charts/gitea -f gitea-single-pod-values.yaml
@@ -183,7 +183,7 @@ helm install gitea gitea-charts/gitea -f gitea-single-pod-values.yaml
 
 3. Then, we delete the gitea services and re-expose the deployment to have a ClusterIP. By default, gitea has a clusterip of type None
 
-```bash
+```shell
 k get svc gitea-http -o yaml > gitea-http-svc.yaml
 k delete svc gitea-http
 k get svc gitea-ssh -o yaml > gitea-ssh-svc.yaml
@@ -197,3 +197,40 @@ gitea   ClusterIP   10.98.139.192   <none>        2222/TCP,3000/TCP   6s
 ```
 
 As you can see, you can now expose the service at that ClusterIP and port 3000
+
+## Add ArgoCD local users (when not using SSO)
+
+1: Modify config map argocd-cm:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  ...
+  name: argocd-cm
+  ...
+data:
+  accounts.bobsacamano: login # Add login capability to this new user
+  admin.enabled: "false"      # Disable the local admin account
+```
+
+2. Set a password for this user as follows:
+
+```shell
+$ argocd account list
+NAME         ENABLED  CAPABILITIES
+admin        false    login
+bobsacamano  true     login
+
+$ argocd account get --account bobsacamano
+Name:               bobsacamano
+Enabled:            true
+Capabilities:       login
+
+Tokens:
+NONE
+$ argocd account update-password \
+  --account bobsacamano \
+  --current-password \
+  --new-password login1234
+```

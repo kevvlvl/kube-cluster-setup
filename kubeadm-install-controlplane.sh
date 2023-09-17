@@ -40,9 +40,9 @@ echo "New Hostname set"
 cat $HOSTNAME_FILE
 
 # Assign static IP for the control plane
-sudo nmcli con add type ethernet con-name 'static' ifname $ETH_HOST_ADAPTER ipv4.method manual ipv4.addresses $CONTROL_PLANE_IP/24 gw4 $GATEWAY_IP
+sudo nmcli con add type ethernet con-name static ifname $ETH_HOST_ADAPTER ipv4.method manual ipv4.addresses $CONTROL_PLANE_IP/24 gw4 $GATEWAY_IP
 sudo nmcli con mod static ipv4.dns $GATEWAY_IP
-sudo nmcli con up id 'static'
+sudo nmcli con up id static
 
 echo "Static IP Set"
 ip addr
