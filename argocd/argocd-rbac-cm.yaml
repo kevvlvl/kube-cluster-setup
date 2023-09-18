@@ -9,5 +9,9 @@ metadata:
 data:
   policy.default: role:readonly
   policy.csv: |
-    p, role:dev-team, applications, get, dev-blue/*, allow
-    g, bobsacamano, role:dev-team
+    p, role:devteam-red, applications, get, project-red/*, allow
+    p, role:devteam-red, applications, create, project-red/*, allow
+    p, role:devteam-red, applications, update, project-red/*, allow
+    p, role:devteam-red, applications, delete, project-red/*, allow
+    p, role:devteam-red, applications, sync, project-red/*, allow
+    g, bobsacamano, role:devteam-red
