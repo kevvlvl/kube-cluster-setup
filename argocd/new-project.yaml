@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: project-red
+  namespace: argocd
+spec:
+  description: Project of team red
+  sourceRepos:
+    - 'http://10.98.139.192:3000/team-red/env-config.git' # '*' for any git source
+  destinations:                                           # List all namespaces where these git repos are allowed to deploy
+  - namespace: red
+    server: https://kubernetes.default.svc
+    name: in-cluster
+  namespaceResourceWhitelist:                             # only allow these kind of object creations in the target namespaces (see destinations)
+  - group: ''
+    kind: StatefulSet
+  - group: ''
+    kind: Deployment
+  - group: ''
+    kind: Service
+  - group: ""
+    kind: ConfigMap
+  - group: ""
+    kind: Secret
+  roles:
+  - name: dev
+    description: allow developers to CRUD applications
+    policies:
+    - p, proj:project-red:dev, applications, get, project-red/*, allow
+    - p, proj:project-red:dev, applications, create, project-red/*, allow
+    - p, proj:project-red:dev, applications, update, project-red/*, allow
+    - p, proj:project-red:dev, applications, delete, project-red/*, allow
+    - p, proj:project-red:dev, applications, sync, project-red/*, allow
+    groups:
+    - oidc-group-name # group from jwt token's group memberships.
