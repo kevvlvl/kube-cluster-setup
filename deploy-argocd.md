@@ -255,6 +255,7 @@ metadata:
     app.kubernetes.io/name: argocd-rbac-cm
     app.kubernetes.io/part-of: argocd
 data:
+  policy.default: role:readonly
   policy.csv: |
     p, role:dev-team, applications, get, dev-blue/*, allow
     g, bobsacamano, role:dev-team
