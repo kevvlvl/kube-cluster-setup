@@ -123,11 +123,11 @@ rm argocd-linux-amd64
 
 5. Update the admin password by updating the secret
 
-replace PASSWORD_HERE with the desired password
+replace PASSWORD_HERE with the desired password. We will chose admin123 for the sake of this example
 
 ```shell
 kubectl -n argocd patch secret argocd-secret \
--p '{"stringData": {"admin.password": "'$(htpasswd -bnBC 10 "" PASSWORD_HERE | tr -d ':\n' | sed 's/$2y/$2a/')'", "admin.passwordMtime": "'$(date +%FT%T%Z)'"}}'
+-p '{"stringData": {"admin.password": "'$(htpasswd -bnBC 10 "" admin123 | tr -d ':\n' | sed 's/$2y/$2a/')'", "admin.passwordMtime": "'$(date +%FT%T%Z)'"}}'
 ```
 
 While connected on any node, now we can access argoCD UI by getting the service's ClusterIP:
@@ -211,10 +211,9 @@ metadata:
   ...
 data:
   accounts.bobsacamano: login # Add login capability to this new user
-  admin.enabled: "false"      # Disable the local admin account
 ```
 
-2. Set a password for this user as follows:
+2: Define a new password for this user as follows:
 
 ```shell
 $ argocd account list
@@ -229,8 +228,34 @@ Capabilities:       login
 
 Tokens:
 NONE
+
 $ argocd account update-password \
   --account bobsacamano \
-  --current-password \
+  --current-password admin123
   --new-password login1234
+```
+
+3: Assign bobsacamano to the dev team "blue" that only has access to th eproject "dev-blue"
+
+__Prerequisite__: The applications for the team to manage must be part of the dev-blue project. If not created, create it as follows:
+
+```shell
+$ argocd proj create dev-blue -d https://kubernetes.default.svc,blue
+```
+
+Then, you must review the repositories and applications to ensure that the repositories are created within that project, and that the application be associated to that same project.
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-rbac-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  policy.csv: |
+    p, role:dev-team, applications, get, dev-blue/*, allow
+    g, bobsacamano, role:dev-team
 ```
